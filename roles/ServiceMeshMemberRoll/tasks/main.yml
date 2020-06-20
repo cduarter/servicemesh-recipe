@@ -1,0 +1,202 @@
+# tasks file for ServiceMeshMemberRoll
+- python_requirements_info:
+        dependencies:
+          - openshift
+          - requests
+
+- name: Connect to Openshift
+  block:
+    - name: Log in (obtain access token)
+      k8s_auth:
+        username: "{{openshift_username}}"
+        password: "{{openshift_password}}"
+      register: k8s_auth_results
+
+    - name: Create {{control_plane_project_name}} namespace
+      k8s:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        name: "{{control_plane_project_name}}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Create a ServiceMeshMemberRoll by reading the definition from a local file
+      k8s:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        namespace: "{{control_plane_project_name}}"
+        state: present
+        definition: "{{ lookup('template', '{{ role_path }}/templates/smmr.yml') }}"
+
+    - name: Get {{service_mesh_member_roll_namespaces}} namespace object
+      k8s_info:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        kind: Namespace
+        name: "{{service_mesh_member_roll_namespaces}}"
+      register: namespace_description
+
+    - shell: echo "Namespace contains Service Mesh labels"
+      failed_when: not(namespace_description.resources is search('member-of'))
+
+    - name: Get all Deployment existing in namespace {{service_mesh_member_roll_namespaces}}
+      k8s_info:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        kind: Deployment
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+      register: deployment
+
+    - name: Get all Services existing in namespace {{service_mesh_member_roll_namespaces}}
+      k8s_info:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        kind: Service
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+      register: services
+
+    - name: "Add sidecar.istio.io/inject to Deployments on namespace "
+      k8s:
+        state: present
+        definition:
+          kind: Deployment
+          metadata:
+              name: "{{ item.metadata.name }}"
+              namespace: "{{service_mesh_member_roll_namespaces}}"
+          spec:
+            template:
+              metadata:
+                annotations:
+                  sidecar.istio.io/inject: "true"
+      with_items: "{{ deployment.resources }}"
+
+    - name: "Wait until the pods rollout"
+      pause:
+        seconds: 30
+
+    - name: Get all Pods existing in Namespace {{service_mesh_member_roll_namespaces}}
+      k8s_info:
+        api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+        kind: Pod
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+      register: pods
+
+
+    - name: "Check if istio-proxy is deploy on Pod"
+      shell: echo "Check if istio-proxy is deploy on Pod"
+      failed_when: not(item.spec.containers is search('istio-proxy'))
+      with_items: "{{ pods.resources }}"
+###########################################################
+########################point 3  mTLS Security##############
+############################################################
+    - name: "Create policy per Deployments on namespace"
+      k8s:
+        state: present
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+        definition: "{{ lookup('template', '{{ role_path }}/templates/policy.yml') }}"
+      with_items: "{{ deployment.resources }}"
+
+    - name: Generate certificate
+      shell: "openssl req -x509 -config {{ role_path }}/templates/cert.cfg -extensions req_ext -nodes -days 730 -newkey rsa:2048 -sha256 -keyout {{ role_path }}/files/tls.key -out {{ role_path }}/files/tls.crt"
+
+    - name: Set tls.crt and tls.key facts
+      set_fact:
+        crt: "{{ lookup('file', '{{ role_path }}/files/tls.crt') }}"
+        key: "{{ lookup('file', '{{ role_path }}/files/tls.key') }}"
+        cacheable: yes
+
+    - name: Create TLS secret
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "istio-ingressgateway-certs"
+            namespace: "{{control_plane_project_name}}"
+          data:
+            tls.crt: "{{ ansible_facts.crt | b64encode }}"
+            tls.key: "{{ ansible_facts.key | b64encode }}"
+          type: kubernetes.io/tls
+
+    - name: Get date
+      shell: "date -Iseconds"
+      register: dateseconds
+
+    - name: "Add kubectl.kubernetes.io/restartedAt to istio-ingressgateway deployment"
+      k8s:
+        state: present
+        definition:
+          kind: Deployment
+          metadata:
+              name: istio-ingressgateway
+              namespace: "{{control_plane_project_name}}"
+          spec:
+            template:
+              metadata:
+                annotations:
+                  kubectl.kubernetes.io/restartedAt: "{{ dateseconds.stdout }}"
+
+    - name: "Wait until the pod rollout"
+      pause:
+        seconds: 30
+
+    - name: "Create wildcard-gateway "
+      k8s:
+        state: present
+        namespace: "{{control_plane_project_name}}"
+        definition: "{{ lookup('template', '{{ role_path }}/templates/wildcard-gateway.yml') }}"
+
+    - name: "Create Destination Rules per Deployments on namespace"
+      k8s:
+        state: present
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+        definition: "{{ lookup('template', '{{ role_path }}/templates/destinationrule.yml') }}"
+      with_items: "{{ services.resources }}"
+
+    - name: "Create Virtual Service per Deployments on namespace"
+      k8s:
+        state: present
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+        definition: "{{ lookup('template', '{{ role_path }}/templates/virtualservice.yml') }}"
+      with_items: "{{ services.resources }}"
+
+
+###########################################################
+########################Entry service##############
+############################################################
+    - name: Remove existing Route for the product page service
+      k8s:
+        state: absent
+        api_version: v1
+        kind: Route
+        namespace: "{{service_mesh_member_roll_namespaces}}"
+        name: productpage
+
+    - name: "Create new route to the product page"
+      k8s:
+        state: present
+        definition:
+          kind: Route
+          metadata:
+            annotations:
+              openshift.io/host.generated: 'true'
+            labels:
+              app: productpage
+              service: productpage
+            name: productpage
+            namespace: "{{control_plane_project_name}}"
+          spec:
+            host: productpage.{{openshift_apps_domain}}
+            port:
+              targetPort: https
+            tls:
+              termination: passthrough
+            to:
+              kind: Service
+              name: istio-ingressgateway
+              weight: 100
+            wildcardPolicy: None
+
+  always:
+  - name: If login succeeded, try to log out (revoke access token)
+    when: k8s_auth_results.k8s_auth.api_key is defined
+    k8s_auth:
+      state: absent
+      api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"

@@ -4,6 +4,7 @@ Repository with homework sources for RHT Service Mesh Advanced course.
 Name: Chrystian David cduarter
 Role: SSA
 
+
 ## Download sources
 
 ```bash
@@ -24,6 +25,25 @@ Install Python dependencies
 ```bash
 pip install requests-oauthlib --user
 pip install openshift --user
+
+
+## Pre Req isitio Operator:
+
+```bash
+oc adm new-project istio-operator --display-name="Service Mesh Operator"
+oc project istio-operator
+oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-1.0.0/deploy/servicemesh-operator.yaml
+```
+
+#######Install Control Plane #######
+
+```bash
+oc adm new-project bookretail-istio-system --display-name="Service Mesh System"
+
+oc apply -f  service-mesh.yaml -n bookretail-istio-system
+
+oc get pods -n bookretail-istio-system -w
+
 ```
 
 ## Demo Application
@@ -97,9 +117,9 @@ $ tree .
 
 ```yaml
 # API URL of Openshift 4 Instance
-openshift_api_url: "https://api.cluster-4313.4313.sandbox1697.opentlc.com:6443"
+openshift_api_url: "https://api.cluster-c540.c540.sandbox904.opentlc.com:6443"
 # Application domain
-openshift_apps_domain: "apps.cluster-4313.4313.sandbox1697.opentlc.com"
+openshift_apps_domain: "apps.cluster-c540.c540.sandbox904.opentlc.com"
 # Openshift User
 openshift_username: admin
 # Openshift Password
@@ -117,3 +137,13 @@ To execute the playbook use the following command
 ```bash
 ansible-playbook site.yml
 ```
+
+
+## URL Serive Mesh
+
+echo -en "\n\nhttps://$(oc get route jaeger -o template --template={{.spec.host}} -n bookretail-istio-system)\n\n"
+https://jaeger-bookretail-istio-system.apps.cluster-c540.c540.sandbox904.opentlc.com/search
+
+echo -en "\n\nhttps://$(oc get route kiali -o template --template={{.spec.host}} -n bookretail-istio-system)\n\n"
+
+export GATEWAY_URL=$(oc -n bookretail-istio-system get route istio-ingressgateway -o jsonpath='{.spec.host}')

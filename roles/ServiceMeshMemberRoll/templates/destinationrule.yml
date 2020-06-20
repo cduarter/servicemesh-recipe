@@ -1,0 +1,9 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: {{ item.metadata.name }}-client-mtls
+spec:
+  host: {{ item.metadata.name }}.{{service_mesh_member_roll_namespaces}}.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

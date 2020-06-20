@@ -1,0 +1,9 @@
+- hosts: localhost
+  #vars:
+   # dir: roles/ServiceMeshMemberRoll/vars/external_vars.yml
+  module_defaults:
+    group/k8s:
+      host: "{{openshift_api_url}}"
+      validate_certs: no
+  roles:
+    - ServiceMeshMemberRoll

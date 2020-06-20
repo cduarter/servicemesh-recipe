@@ -1,0 +1,18 @@
+---
+dependencies: []
+allow_duplicates: true
+
+galaxy_info:
+  author: Chrystian David Duarte
+  role_name: homework_install_service_mesh_member_roll
+  description: Install and configure ServiceMeshMemberRoll
+  company: "Red Hat"
+  license: "license (BSD, MIT)"
+  min_ansible_version: 2.9
+  platforms:
+  - name: GenericLinux
+    versions:
+    - any
+  galaxy_tags:
+    - openshift
+    - ossm

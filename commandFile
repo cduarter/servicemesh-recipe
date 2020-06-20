@@ -1,0 +1,91 @@
+oc new-project bookinfo
+
+
+oc apply -f https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml -n bookinfo
+
+
+oc expose service productpage
+
+echo -en "\n$(oc get route productpage --template '{{ .spec.host }}')\n"
+
+
+################################################################################################################################
+###################################3###Install Service Mesh Operator ###########################################################
+################################################################################################################################
+
+oc adm new-project istio-operator --display-name="Service Mesh Operator"
+oc project istio-operator
+oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-1.0.0/deploy/servicemesh-operator.yaml
+
+oc get route kiali -n istio-system -o jsonpath='{"https://"}{.spec.host}{"\n"}'
+
+#######Install Control Plane #######
+
+oc adm new-project bookretail-istio-system --display-name="Service Mesh System"
+
+oc apply -f  service-mesh.yaml -n bookretail-istio-system
+
+oc get pods -n bookretail-istio-system -w
+
+#######create mesh member rolll #######
+
+
+oc create -f servicemeshmemberroll-default.yaml -n bookretail-istio-system
+
+
+#######################################
+
+
+
+
+
+BOOK_URL=istio-ingressgateway-bookretail-istio-system.apps.cluster-4313.4313.sandbox1697.opentlc.com
+
+for i in {1..1000} ; do curl -o /dev/null -s -w "%{http_code}\n" http://$BOOK_URL/productpage ; sleep 2 ; done
+
+for i in {1..1000} ; do curl -o /dev/null -s -w "%{http_code}\n" http://$BOOK_URL:8080/productpage ; sleep 2 ; done
+
+
+
+
+
+################################################
+
+
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: details-virtualservice
+  namespace: bookinfo
+  selfLink: >-
+    /apis/networking.istio.io/v1alpha3/namespaces/bookinfo/virtualservices/details-virtualservice
+  uid: bf845261-50ba-4902-8ad2-97acf0e6d346
+  resourceVersion: '161422'
+  generation: 4
+  creationTimestamp: '2020-06-16T21:41:09Z'
+spec:
+  hosts:
+    - details.apps.cluster-4313.4313.sandbox1697.opentlc.com
+  gateways:
+    - bookinfo-wildcard-gateway.bookretail-istio-system.svc.cluster.local
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: details.bookinfo.svc.cluster.local
+            port:
+              number: 9080
+  tcp: ~
+  tls: ~
+  exportTo: ~
+###########################################################
+
+
+echo "# servicemesh-recipe" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/cduarter/servicemesh-recipe.git
+git push -u origin master
