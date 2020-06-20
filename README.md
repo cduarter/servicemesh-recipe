@@ -1,15 +1,17 @@
-# RHT Service Mesh Advanced - Homework
+# Red Hat Service Mesh Advanced - Homework
 
 Repository with homework sources for RHT Service Mesh Advanced course.
+Name: Chrystian David cduarter
+Role: SSA
 
 ## Download sources
 
 ```bash
 # Clone Sources
-git clone https://github.com/fmenesesg/osm-homework.git
+git clone https://github.com/cduarter/servicemesh-recipe.git
 
 # Go to homework-rhoar
-cd osm-homework
+cd homework
 ```
 
 ## Pre Req
@@ -76,7 +78,7 @@ $ tree .
 
 ```
 
-* group_vars/all: Global playbook variables
+* group_vars/all: playbook variables
 
 * roles/ServiceMeshMemberRoll/files: Will contain tls.crt and tls.key files
 
