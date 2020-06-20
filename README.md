@@ -30,7 +30,7 @@ pip install requests-oauthlib --user
 pip install openshift --user
 ```
 
-## Pre Req isitio Operator:
+## Pre Req Istio Operator:
 
 ```bash
 oc adm new-project istio-operator --display-name="Service Mesh Operator"
@@ -38,7 +38,7 @@ oc project istio-operator
 oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-1.0.0/deploy/servicemesh-operator.yaml
 ```
 
-#######Install Control Plane #######
+## Install Control Plane
 
 ```bash
 oc adm new-project bookretail-istio-system --display-name="Service Mesh System"
@@ -64,10 +64,11 @@ oc expose service productpage
 
 ## Apply Service Mesh configurations
 
-The goal of the homework is to enable service mesh capabilities on the bookinfo namespace.
+to enable service mesh capabilities on the bookinfo namespace.
+
 The features that need to be enable are:
 
-* The book info namespace should be on the scope of Openshift Service Mesh
+* The bookinfo namespace should be on the scope of Openshift Service Mesh
 * All the deployments should have an envoy proxy
 * The trafic between the services should enable mTLS
 
