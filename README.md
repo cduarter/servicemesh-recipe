@@ -2,7 +2,7 @@
 
 Repository with homework sources for RHT Service Mesh Advanced course
 
-Name: Chrystian David cduarter.
+Name: Chrystian David Duarte.
 
 Role: SSA.
 
@@ -14,8 +14,8 @@ Role: SSA.
 # Clone Sources
 git clone https://github.com/cduarter/servicemesh-recipe.git
 
-# Go to homework-rhoar
-cd homework
+# Go to servicemesh-recipe
+cd servicemesh-recipe
 ```
 
 ## Pre Req
@@ -34,7 +34,9 @@ pip install openshift --user
 
 ```bash
 oc adm new-project istio-operator --display-name="Service Mesh Operator"
+
 oc project istio-operator
+
 oc apply -n istio-operator -f https://raw.githubusercontent.com/Maistra/istio-operator/maistra-1.0.0/deploy/servicemesh-operator.yaml
 ```
 
@@ -80,7 +82,7 @@ In order to acomplish previus requirements and this homework principal goal, I h
 ```bash
 $ tree .
 .
-├── homework
+├── servicemesh-recipe
 │   ├── group_vars
 │   │   └── all
 │   ├── roles
