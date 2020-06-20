@@ -1,8 +1,11 @@
 # Red Hat Service Mesh Advanced - Homework
 
-Repository with homework sources for RHT Service Mesh Advanced course.
-Name: Chrystian David cduarter
-Role: SSA
+Repository with homework sources for RHT Service Mesh Advanced course
+
+Name: Chrystian David cduarter.
+
+Role: SSA.
+
 
 
 ## Download sources
@@ -25,7 +28,7 @@ Install Python dependencies
 ```bash
 pip install requests-oauthlib --user
 pip install openshift --user
-
+```
 
 ## Pre Req isitio Operator:
 
@@ -138,12 +141,14 @@ To execute the playbook use the following command
 ansible-playbook site.yml
 ```
 
+### URL Service Mesh
 
-## URL Serive Mesh
-
+```
 echo -en "\n\nhttps://$(oc get route jaeger -o template --template={{.spec.host}} -n bookretail-istio-system)\n\n"
 https://jaeger-bookretail-istio-system.apps.cluster-c540.c540.sandbox904.opentlc.com/search
 
 echo -en "\n\nhttps://$(oc get route kiali -o template --template={{.spec.host}} -n bookretail-istio-system)\n\n"
 
 export GATEWAY_URL=$(oc -n bookretail-istio-system get route istio-ingressgateway -o jsonpath='{.spec.host}')
+
+```
